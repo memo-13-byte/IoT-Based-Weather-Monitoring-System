@@ -1,0 +1,369 @@
+[
+    {
+        "id": "d8ace885afb19299",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "6a655ef36d4cec48",
+        "type": "mqtt in",
+        "z": "d8ace885afb19299",
+        "name": "ESP32 Sensör Verisi",
+        "topic": "sensor/dht22",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "9080373db53fed07",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 510,
+        "y": 160,
+        "wires": [
+            [
+                "d01a6c0c458949c4",
+                "47ff01d7877d3dbf"
+            ]
+        ]
+    },
+    {
+        "id": "d01a6c0c458949c4",
+        "type": "function",
+        "z": "d8ace885afb19299",
+        "name": "Sıcaklık Kontrolü",
+        "func": "// Sıcaklık eşiği\nconst TEMPERATURE_THRESHOLD = 20.0;\n\n// Son bildirim zamanı\nif (!context.global.lastNotificationTime) {\n    context.global.lastNotificationTime = 0;\n}\n\n// Gelen verileri kontrol et\nif (msg.payload && msg.payload.sicaklik) {\n    const temp = msg.payload.sicaklik;\n    const humidity = msg.payload.nem || \"N/A\";\n\n    // Günlüğe kaydet\n    node.status({ fill: \"green\", shape: \"dot\", text: `Sıcaklık: ${temp}°C, Nem: ${humidity}%` });\n\n    // Eşik aşıldıysa ve son bildirimden beri en az 5 dakika geçtiyse\n    const now = new Date().getTime();\n    const fiveMinutes = 5 * 60 * 1000;\n\n    if (temp > TEMPERATURE_THRESHOLD && (now - context.global.lastNotificationTime > fiveMinutes)) {\n        // Zaman bilgisini ekle\n        const timestamp = new Date().toLocaleString('tr-TR');\n\n        // E-posta içeriği\n        const emailMsg = {\n            topic: \"ESP32 Sıcaklık Uyarısı\",\n            payload: `ESP32 sensöründen sıcaklık uyarısı!\\n\\nZaman: ${timestamp}\\nSıcaklık: ${temp}°C\\nNem: ${humidity}%\\n\\nBu e-posta, Raspberry Pi üzerindeki Node-RED tarafından otomatik olarak gönderilmiştir.`,\n            to: \"canmehmetoguz@gmail.com\"\n        };\n\n        // Telegram mesajı\n        const telegramMsg = {\n            payload: {\n                chatId: \"1904540703\", // Buraya Telegram ID'nizi yazın\n                type: \"message\",\n                content: `🔔 *Sıcaklık Uyarısı*\\n\\n🌡️ *Sıcaklık:* ${temp}°C\\n💧 *Nem:* ${humidity}%\\n⏱️ *Zaman:* ${timestamp}\\n\\n⚠️ Sıcaklık eşik değerini (${TEMPERATURE_THRESHOLD}°C) aştı!`,\n                options: {\n                    parse_mode: \"Markdown\"\n                }\n            }\n        };\n\n        // Son bildirim zamanını güncelle\n        context.global.lastNotificationTime = now;\n\n        // E-posta ve Telegram mesajlarını gönder\n        return [emailMsg, telegramMsg];\n    }\n}\n\n// Eşik aşılmadıysa hiçbir şey gönderme\nreturn [null, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 220,
+        "wires": [
+            [
+                "aed09a17ba627cba"
+            ],
+            [
+                "6a3f4bba376727bc"
+            ]
+        ]
+    },
+    {
+        "id": "aed09a17ba627cba",
+        "type": "e-mail",
+        "z": "d8ace885afb19299",
+        "server": "smtp.gmail.com",
+        "port": "465",
+        "authtype": "BASIC",
+        "saslformat": true,
+        "token": "oauth2Response.access_token",
+        "secure": true,
+        "tls": true,
+        "name": "mehmetoguzkocadere46@gmail.com",
+        "dname": "",
+        "x": 1010,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "a657ccea97e19aaa",
+        "type": "function",
+        "z": "d8ace885afb19299",
+        "name": "Veri Ayrıştırıcı",
+        "func": "// Sıcaklık ve nem değerlerini ayır\nif (msg.payload && msg.payload.sicaklik && msg.payload.nem) {\n    // Sıcaklık mesajı\n    var tempMsg = {\n        topic: \"sicaklik\",\n        payload: msg.payload.sicaklik\n    };\n\n    // Nem mesajı\n    var humMsg = {\n        topic: \"nem\",\n        payload: msg.payload.nem\n    };\n\n    // Her iki mesajı da farklı çıkışlardan gönder\n    return [tempMsg, humMsg];\n}\nreturn [null, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 300,
+        "wires": [
+            [
+                "13f86ab80c5639a3",
+                "46ed5e58573b10e1",
+                "4e2805a627f254b3"
+            ],
+            [
+                "1fe287f06f0d80d0",
+                "4e2805a627f254b3"
+            ]
+        ],
+        "outputLabels": [
+            "Sıcaklık",
+            "Nem"
+        ]
+    },
+    {
+        "id": "13f86ab80c5639a3",
+        "type": "ui_gauge",
+        "z": "d8ace885afb19299",
+        "name": "",
+        "group": "89f87f08ca5915cf",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Sıcaklık",
+        "label": "°C",
+        "format": "{{value}}°C",
+        "min": 0,
+        "max": "50",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 780,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "1fe287f06f0d80d0",
+        "type": "ui_gauge",
+        "z": "d8ace885afb19299",
+        "name": "",
+        "group": "89f87f08ca5915cf",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Nem",
+        "label": "%",
+        "format": "{{value}}%",
+        "min": 0,
+        "max": "100",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 750,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "46ed5e58573b10e1",
+        "type": "ui_text",
+        "z": "d8ace885afb19299",
+        "group": "89f87f08ca5915cf",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Son Güncelleme",
+        "format": "{{msg.topic}}: {{value}} - {{new Date().toLocaleString('tr-TR')}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 1030,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "4e2805a627f254b3",
+        "type": "ui_chart",
+        "z": "d8ace885afb19299",
+        "name": "",
+        "group": "89f87f08ca5915cf",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "label": "Sıcaklık ve Nem Grafiği",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": "30",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "60",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1050,
+        "y": 460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "097f427795a9db65",
+        "type": "telegram receiver",
+        "z": "d8ace885afb19299",
+        "name": "ESP32 Sensör Verisi",
+        "bot": "9387571d9516f8d3",
+        "saveDataDir": "",
+        "filterCommands": false,
+        "x": 770,
+        "y": 540,
+        "wires": [
+            [
+                "8cee7089b8cd2b2e"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "8cee7089b8cd2b2e",
+        "type": "function",
+        "z": "d8ace885afb19299",
+        "name": "Telegram Komut İşleyici",
+        "func": "// Telegram komutlarını işle\nvar command = msg.payload.content;\nvar chatId = msg.payload.chatId;\n\nif (command === \"/status\" || command === \"/durum\") {\n    // Global context'ten son sensör değerlerini al\n    var temp = global.get(\"lastTemp\") || \"Bilinmiyor\";\n    var hum = global.get(\"lastHum\") || \"Bilinmiyor\";\n    var lastUpdate = global.get(\"lastUpdate\") || \"Bilinmiyor\";\n\n    var response = \"📊 *Güncel Sensör Durumu*\\n\" +\n        \"🌡️ Sıcaklık: \" + temp + \"°C\\n\" +\n        \"💧 Nem: \" + hum + \"%\\n\" +\n        \"⏱️ Son güncelleme: \" + lastUpdate;\n\n    return {\n        payload: {\n            chatId: chatId,\n            type: \"message\",\n            content: response,\n            options: {\n                parse_mode: \"Markdown\"\n            }\n        }\n    };\n}\nelse if (command === \"/help\" || command === \"/yardim\") {\n    var helpText = \"📱 *ESP32 Sensör Bot Komutları*\\n\\n\" +\n        \"/status veya /durum - Güncel sensör değerlerini göster\\n\" +\n        \"/help veya /yardim - Bu yardım mesajını göster\";\n\n    return {\n        payload: {\n            chatId: chatId,\n            type: \"message\",\n            content: helpText,\n            options: {\n                parse_mode: \"Markdown\"\n            }\n        }\n    };\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1030,
+        "y": 540,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "6a3f4bba376727bc",
+        "type": "telegram sender",
+        "z": "d8ace885afb19299",
+        "name": "",
+        "bot": "9387571d9516f8d3",
+        "haserroroutput": false,
+        "outputs": 1,
+        "x": 1270,
+        "y": 620,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "47ff01d7877d3dbf",
+        "type": "function",
+        "z": "d8ace885afb19299",
+        "name": "Global Veri Kaydedici",
+        "func": "// Sensör verilerini global değişkenlere kaydet\nif (msg.payload && msg.payload.sicaklik && msg.payload.nem) {\n    // Global değişkenlere kaydet\n    global.set(\"lastTemp\", msg.payload.sicaklik);\n    global.set(\"lastHum\", msg.payload.nem);\n    global.set(\"lastUpdate\", new Date().toLocaleString('tr-TR'));\n}\n\n// Mesajı değiştirmeden geçir\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 240,
+        "wires": [
+            [
+                "a657ccea97e19aaa"
+            ]
+        ]
+    },
+    {
+        "id": "9080373db53fed07",
+        "type": "mqtt-broker",
+        "name": "Local Broker",
+        "broker": "localhost",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "89f87f08ca5915cf",
+        "type": "ui_group",
+        "name": "Default",
+        "tab": "c4e2b314ab833356",
+        "order": 1,
+        "disp": true,
+        "width": 6,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "9387571d9516f8d3",
+        "type": "telegram bot",
+        "botname": "ESP32_Sensor_BotESP32_Sensor_Bot",
+        "usernames": "1904540703",
+        "chatids": "",
+        "baseapiurl": "",
+        "testenvironment": false,
+        "updatemode": "polling",
+        "pollinterval": 300,
+        "usesocks": false,
+        "sockshost": "",
+        "socksprotocol": "socks5",
+        "socksport": 6667,
+        "socksusername": "anonymous",
+        "sockspassword": "",
+        "bothost": "",
+        "botpath": "",
+        "localbothost": "0.0.0.0",
+        "localbotport": 8443,
+        "publicbotport": 8443,
+        "privatekey": "",
+        "certificate": "",
+        "useselfsignedcertificate": false,
+        "sslterminated": false,
+        "verboselogging": false
+    },
+    {
+        "id": "c4e2b314ab833356",
+        "type": "ui_tab",
+        "name": "Tarihçe",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    }
+]
